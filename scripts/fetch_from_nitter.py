@@ -3,27 +3,41 @@ import json
 import feedparser
 from datetime import datetime
 
-# Change this to a reliable Nitter instance
-NITTER_BASE_URL = "https://nitter.net"
+# Full list of known Nitter mirrors (ordered by priority)
+NITTER_MIRRORS = [
+    "https://nitter.projectsegfau.lt",
+    "https://nitter.no-logs.com",
+    "https://nitter.poast.org",
+    "https://nitter.domain.glass",
+    "https://nitter.space",
+    "https://xcancel.com",
+    "https://lightbrd.com",
+    "https://nitter.privacyredirect.com"
+]
 
 def extract_tweet_id(url):
-    # From: https://nitter.net/username/status/123456789
     return url.strip("/").split("/")[-1]
 
 def fetch_latest_tweet(account):
-    feed_url = f"{NITTER_BASE_URL}/{account}/rss"
-    parsed = feedparser.parse(feed_url)
+    for base_url in NITTER_MIRRORS:
+        feed_url = f"{base_url}/{account}/rss"
+        try:
+            parsed = feedparser.parse(feed_url)
 
-    if parsed.entries:
-        entry = parsed.entries[0]
-        link = entry.link
-        tweet_id = extract_tweet_id(link)
-        return {
-            "id": tweet_id,
-            "link": link,
-            "author": f"@{account}"
-        }
-    return None
+            if parsed.entries:
+                entry = parsed.entries[0]
+                link = entry.link
+                tweet_id = extract_tweet_id(link)
+                return {
+                    "id": tweet_id,
+                    "link": link,
+                    "author": f"@{account}"
+                }
+            else:
+                print(f"⚠️ No tweets at {base_url} for {account}")
+        except Exception as e:
+            print(f"❌ Error with {base_url} for {account}: {e}")
+    return None  # All mirrors failed
 
 def main():
     today = datetime.utcnow().strftime("%Y%m%d")
@@ -35,15 +49,12 @@ def main():
 
     results = []
     for account in accounts:
-        try:
-            tweet = fetch_latest_tweet(account)
-            if tweet:
-                results.append(tweet)
-                print(f"✅ {account} → tweet_{tweet['id']}")
-            else:
-                print(f"⚠️ No tweet found for {account}")
-        except Exception as e:
-            print(f"❌ Failed to fetch {account}: {e}")
+        tweet = fetch_latest_tweet(account)
+        if tweet:
+            results.append(tweet)
+            print(f"✅ {account} → tweet_{tweet['id']}")
+        else:
+            print(f"⛔ No valid tweet found for {account}")
 
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
@@ -52,4 +63,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

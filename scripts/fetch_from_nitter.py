@@ -3,7 +3,7 @@ import json
 import feedparser
 from datetime import datetime
 
-# Full list of known Nitter mirrors (ordered by priority)
+# Full list of Nitter mirrors
 NITTER_MIRRORS = [
     "https://nitter.projectsegfau.lt",
     "https://nitter.no-logs.com",
@@ -24,20 +24,20 @@ def fetch_latest_tweet(account):
         try:
             parsed = feedparser.parse(feed_url)
 
-            if parsed.entries:
-                entry = parsed.entries[0]
-                link = entry.link
-                tweet_id = extract_tweet_id(link)
+            for entry in parsed.entries:
+                if entry.title.startswith("RT @"):
+                    continue  # Skip retweets
+                tweet_id = extract_tweet_id(entry.link)
                 return {
                     "id": tweet_id,
-                    "link": link,
+                    "link": f"https://x.com/{account}/status/{tweet_id}",
                     "author": f"@{account}"
                 }
-            else:
-                print(f"⚠️ No tweets at {base_url} for {account}")
+
+            print(f"⚠️ No non-retweet found at {base_url} for {account}")
         except Exception as e:
             print(f"❌ Error with {base_url} for {account}: {e}")
-    return None  # All mirrors failed
+    return None
 
 def main():
     today = datetime.utcnow().strftime("%Y%m%d")

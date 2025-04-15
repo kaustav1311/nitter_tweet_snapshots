@@ -1,0 +1,34 @@
+name: Generate latest.json
+
+on:
+  push:
+    paths:
+      - 'screenshots/**'
+  schedule:
+    - cron: '0 * * * *' # runs hourly – you can change to daily if needed
+
+jobs:
+  update-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Generate latest.json
+        run: |
+          LATEST_FOLDER=$(ls -d screenshots/*/ | grep -E 'screenshots/[0-9]{8}/' | sed 's/[^0-9]*//g' | sort -r | head -n 1)
+          echo "Latest folder: $LATEST_FOLDER"
+          echo "{ \"date\": \"$LATEST_FOLDER\" }" > screenshots/latest.json
+
+      - name: Commit and push latest.json
+        run: |
+          git config user.name "nillion-bot"
+          git config user.email "nillion-bot@users.noreply.github.com"
+          git add screenshots/latest.json
+          git commit -m "Update latest.json to $LATEST_FOLDER" || echo "No changes to commit"
+          git push

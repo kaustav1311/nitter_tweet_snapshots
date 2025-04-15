@@ -20,9 +20,11 @@ async function takeTweetScreenshot(tweet, browser) {
     const page = await browser.newPage();
     await page.setViewport({ width: 800, height: 1000 });
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/117.0.0.0 Safari/537.36");
+
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
     if (url.includes('x.com') || url.includes('twitter.com')) {
+      // Remove login modals
       await page.evaluate(() => {
         const selectors = [
           '[data-testid="sheetDialog"]',
@@ -36,14 +38,18 @@ async function takeTweetScreenshot(tweet, browser) {
       });
 
       await page.waitForSelector('[data-testid="tweet"]', { timeout: 10000 });
-      const tweetElement = await page.$('[data-testid="tweet"]');
+      const tweetElements = await page.$$('[data-testid="tweet"]');
+      const tweetElement = tweetElements?.[0];
+
       if (!tweetElement) throw new Error('Tweet element not found');
-      await tweetElement.screenshot({ path: filePath });
+      const box = await tweetElement.boundingBox();
+      await tweetElement.screenshot({ path: filePath, clip: box });
     } else {
       await page.waitForSelector('.main-tweet, article, .tweet-body', { timeout: 10000 });
       const element = await page.$('.main-tweet') || await page.$('article') || await page.$('.tweet-body');
       if (!element) throw new Error('Nitter tweet element not found');
-      await element.screenshot({ path: filePath });
+      const box = await element.boundingBox();
+      await element.screenshot({ path: filePath, clip: box });
     }
 
     console.log(`✅ Saved: tweet_${id}.png`);

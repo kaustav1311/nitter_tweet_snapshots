@@ -22,8 +22,7 @@ async function takeTweetScreenshot(tweet, browser) {
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/117.0.0.0 Safari/537.36");
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-    // Remove modals (only needed for Twitter)
-    if (url.includes('twitter.com')) {
+    if (url.includes('x.com') || url.includes('twitter.com')) {
       await page.evaluate(() => {
         const selectors = [
           '[data-testid="sheetDialog"]',
@@ -41,7 +40,6 @@ async function takeTweetScreenshot(tweet, browser) {
       if (!tweetElement) throw new Error('Tweet element not found');
       await tweetElement.screenshot({ path: filePath });
     } else {
-      // Nitter selectors
       await page.waitForSelector('.main-tweet, article, .tweet-body', { timeout: 10000 });
       const element = await page.$('.main-tweet') || await page.$('article') || await page.$('.tweet-body');
       if (!element) throw new Error('Nitter tweet element not found');

@@ -2,7 +2,7 @@ name: Daily Tweet Snapshots (Nitter)
 
 on:
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 22 * * *'  # runs daily at 10PM UTC
   workflow_dispatch:
 
 jobs:
@@ -44,4 +44,3 @@ jobs:
           git commit -m "🖼️ Daily tweet screenshots (Nitter RSS)"
           git push
         continue-on-error: true
-

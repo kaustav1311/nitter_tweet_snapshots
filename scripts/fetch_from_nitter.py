@@ -3,7 +3,7 @@ import json
 import feedparser
 from datetime import datetime
 
-# Nitter mirrors to cycle through
+# List of Nitter mirrors to try in order
 NITTER_MIRRORS = [
     "https://nitter.projectsegfau.lt",
     "https://nitter.no-logs.com",
@@ -19,12 +19,16 @@ def extract_tweet_id(url):
     return url.strip("/").split("/")[-1]
 
 def is_valid_tweet(entry):
-    title = entry.title.strip()
-    # Filter out retweets and replies
+    title = entry.title.strip().lower()
+    summary = entry.summary.strip().lower() if hasattr(entry, 'summary') else ""
+
     return not (
-        title.startswith("RT @") or
+        title.startswith("rt @") or
         title.startswith("@") or
-        title.lower().startswith("replying to")
+        "in reply to" in summary or
+        "replying to" in title or
+        "→" in title or
+        summary.startswith("@")
     )
 
 def fetch_latest_valid_tweet(account):
@@ -32,7 +36,7 @@ def fetch_latest_valid_tweet(account):
         feed_url = f"{base_url}/{account}/rss"
         try:
             parsed = feedparser.parse(feed_url)
-            entries = parsed.entries[:20]  # Look through first 20
+            entries = parsed.entries[:20]
 
             for entry in entries:
                 if is_valid_tweet(entry):
@@ -42,8 +46,10 @@ def fetch_latest_valid_tweet(account):
                         "link": f"https://x.com/{account}/status/{tweet_id}",
                         "author": f"@{account}"
                     }
+                else:
+                    print(f"⏩ Skipped non-header tweet: {entry.title[:60]}...")
 
-            print(f"⚠️ No original tweet at {base_url} for {account}")
+            print(f"⚠️ No original tweet found at {base_url} for {account}")
         except Exception as e:
             print(f"❌ Error with {base_url} for {account}: {e}")
     return None

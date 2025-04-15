@@ -3,7 +3,7 @@ import json
 import feedparser
 from datetime import datetime
 
-# Full list of Nitter mirrors
+# Nitter mirrors to cycle through
 NITTER_MIRRORS = [
     "https://nitter.projectsegfau.lt",
     "https://nitter.no-logs.com",
@@ -18,23 +18,32 @@ NITTER_MIRRORS = [
 def extract_tweet_id(url):
     return url.strip("/").split("/")[-1]
 
-def fetch_latest_tweet(account):
+def is_valid_tweet(entry):
+    title = entry.title.strip()
+    # Filter out retweets and replies
+    return not (
+        title.startswith("RT @") or
+        title.startswith("@") or
+        title.lower().startswith("replying to")
+    )
+
+def fetch_latest_valid_tweet(account):
     for base_url in NITTER_MIRRORS:
         feed_url = f"{base_url}/{account}/rss"
         try:
             parsed = feedparser.parse(feed_url)
+            entries = parsed.entries[:20]  # Look through first 20
 
-            for entry in parsed.entries:
-                if entry.title.startswith("RT @"):
-                    continue  # Skip retweets
-                tweet_id = extract_tweet_id(entry.link)
-                return {
-                    "id": tweet_id,
-                    "link": f"https://x.com/{account}/status/{tweet_id}",
-                    "author": f"@{account}"
-                }
+            for entry in entries:
+                if is_valid_tweet(entry):
+                    tweet_id = extract_tweet_id(entry.link)
+                    return {
+                        "id": tweet_id,
+                        "link": f"https://x.com/{account}/status/{tweet_id}",
+                        "author": f"@{account}"
+                    }
 
-            print(f"⚠️ No non-retweet found at {base_url} for {account}")
+            print(f"⚠️ No original tweet at {base_url} for {account}")
         except Exception as e:
             print(f"❌ Error with {base_url} for {account}: {e}")
     return None
@@ -49,7 +58,7 @@ def main():
 
     results = []
     for account in accounts:
-        tweet = fetch_latest_tweet(account)
+        tweet = fetch_latest_valid_tweet(account)
         if tweet:
             results.append(tweet)
             print(f"✅ {account} → tweet_{tweet['id']}")

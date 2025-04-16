@@ -50,14 +50,40 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Puppeteer
-        run: npm install puppeteer@21.3.8
+      # New step to install Puppeteer with Chrome
+      - name: Install Puppeteer with Chrome
+        run: |
+          npm init -y
+          npm install puppeteer@21.3.8
+          
+          # Verify chrome installation
+          node -e "console.log('Chrome executable path:', require('puppeteer').executablePath())"
+          
+          # Create today's date folder in screenshots directory
+          TODAY=$(date -u +"%Y%m%d")
+          mkdir -p screenshots/$TODAY
+
+      # Export date as an environment variable
+      - name: Set date environment variable
+        run: echo "SNAPSHOT_DATE=$(date -u +"%Y%m%d")" >> $GITHUB_ENV
 
       - name: Screenshot Tweets
         run: node scripts/screenshot_tweets.js
-        env:
-          PUPPETEER_DOWNLOAD_PATH: ~/.cache/puppeteer
         timeout-minutes: 15  # Prevent hanging runs
+
+      - name: Check if screenshots were created
+        run: |
+          TODAY=$(date -u +"%Y%m%d")
+          SCREENSHOT_DIR="screenshots/$TODAY"
+          
+          if [ -d "$SCREENSHOT_DIR" ]; then
+            echo "Screenshot directory exists: $SCREENSHOT_DIR"
+            ls -la "$SCREENSHOT_DIR"
+            COUNT=$(ls -1 "$SCREENSHOT_DIR" | wc -l)
+            echo "Found $COUNT files in screenshot directory"
+          else
+            echo "Warning: Screenshot directory does not exist"
+          fi
 
       - name: Commit and Push Results
         run: |
